@@ -30,14 +30,14 @@ class SearchRepositoriesViewModel(
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    val state: LiveData<UiStateData> //androidx.lifecycle.MediatorLiveData@aaa7110
+    val uiStateLiveData: LiveData<UiStateData> //androidx.lifecycle.MediatorLiveData@aaa7110
     val onAction: (UiActionType) -> Unit
 
     init {
         val queryLiveData =
             MutableLiveData<String>(savedStateHandle.get(LAST_SEARCH_QUERY) ?: DEFAULT_QUERY)
 
-        state = queryLiveData
+        uiStateLiveData = queryLiveData
             .distinctUntilChanged()
             .switchMap { queryString ->
                 liveData(EmptyCoroutineContext, 5000) {
@@ -78,7 +78,7 @@ class SearchRepositoriesViewModel(
     }
 
     override fun onCleared() {
-        savedStateHandle[LAST_SEARCH_QUERY] = state.value?.query
+        savedStateHandle[LAST_SEARCH_QUERY] = uiStateLiveData.value?.query
         super.onCleared()
     }
 }

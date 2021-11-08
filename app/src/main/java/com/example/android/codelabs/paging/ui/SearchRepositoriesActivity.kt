@@ -39,6 +39,8 @@ class SearchRepositoriesActivity : AppCompatActivity() {
     companion object {
         const val TAG = "paging"
     }
+    private lateinit var repoAdapter: ReposAdapter
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val binding = ActivitySearchRepositoriesBinding.inflate(layoutInflater)
@@ -50,19 +52,28 @@ class SearchRepositoriesActivity : AppCompatActivity() {
 
         val decoration = DividerItemDecoration(this, DividerItemDecoration.VERTICAL)
         binding.recyclerView.addItemDecoration(decoration)
-        binding.bindState(viewModel.state, viewModel.onAction)
+        binding.initView(viewModel.onAction)
+        binding.bindState(viewModel.uiStateLiveData)
     }
 
-    /**
-     * Binds the [UiStateData] provided  by the [SearchRepositoriesViewModel] to the UI,
-     * and allows the UI to feed back user actions to it.
-     */
-    private fun ActivitySearchRepositoriesBinding.bindState(
-        uiStateData: LiveData<UiStateData>,
-        onAction: (UiActionType) -> Unit
-    ) {
-        val repoAdapter = ReposAdapter()
+    private fun ActivitySearchRepositoriesBinding.initView(onAction: (UiActionType) -> Unit) {
+        repoAdapter = ReposAdapter()
         recyclerView.adapter = repoAdapter
+        val layoutManager = recyclerView.layoutManager as LinearLayoutManager
+        recyclerView.addOnScrollListener(object : OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
+                val totalItemCount = layoutManager.itemCount
+                val visibleItemCount = layoutManager.childCount
+                val lastVisibleItem = layoutManager.findLastVisibleItemPosition()
+
+                onAction(
+                    UiActionType.Scroll(
+                        visibleItemCount, lastVisibleItem, totalItemCount
+                    )
+                )
+            }
+        })
 
         searchEdit.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_GO) {
@@ -80,31 +91,20 @@ class SearchRepositoriesActivity : AppCompatActivity() {
                 false
             }
         }
+    }
 
-        uiStateData
+    /**
+     * Binds the [UiStateData] provided  by the [SearchRepositoriesViewModel] to the UI,
+     * and allows the UI to feed back user actions to it.
+     */
+    private fun ActivitySearchRepositoriesBinding.bindState(uiStateLiveData: LiveData<UiStateData>) {
+        uiStateLiveData
             .map(UiStateData::query)
             .distinctUntilChanged()
             .observe(this@SearchRepositoriesActivity, { queryString ->
                 searchEdit.setText(queryString)
             })
-
-        val layoutManager = recyclerView.layoutManager as LinearLayoutManager
-        recyclerView.addOnScrollListener(object : OnScrollListener() {
-            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                super.onScrolled(recyclerView, dx, dy)
-                val totalItemCount = layoutManager.itemCount
-                val visibleItemCount = layoutManager.childCount
-                val lastVisibleItem = layoutManager.findLastVisibleItemPosition()
-
-                onAction(
-                    UiActionType.Scroll(
-                        visibleItemCount, lastVisibleItem, totalItemCount
-                    )
-                )
-            }
-        })
-
-        uiStateData
+        uiStateLiveData
             .map(UiStateData::searchResult)
             .distinctUntilChanged()
             .observe(this@SearchRepositoriesActivity) { result ->
@@ -125,12 +125,12 @@ class SearchRepositoriesActivity : AppCompatActivity() {
             }
     }
 
-    private fun ActivitySearchRepositoriesBinding.updateRepoListFromInput(uiAction: (UiActionType) -> Unit) {
-        Log.d(TAG, "updateRepoListFromInput");
+    private fun ActivitySearchRepositoriesBinding.updateRepoListFromInput(onAction: (UiActionType) -> Unit) {
+        Log.d(TAG, "updateRepoListFromInput text: " + searchEdit.text);
         searchEdit.text.trim().let {
             if (it.isNotEmpty()) {
                 recyclerView.scrollToPosition(0)
-                uiAction(UiActionType.Search(it.toString()))
+                onAction(UiActionType.Search(it.toString()))
             }
         }
     }
