@@ -45,11 +45,12 @@ interface GithubService {
 
         fun create(): GithubService {
             val logger = HttpLoggingInterceptor()
-            logger.level = Level.BASIC
+            logger.level = Level.BODY
 
             val client = OkHttpClient.Builder()
                 .addInterceptor(logger)
                 .build()
+
             return Retrofit.Builder()
                 .baseUrl(BASE_URL)
                 .client(client)

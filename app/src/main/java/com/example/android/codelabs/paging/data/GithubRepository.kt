@@ -16,6 +16,7 @@
 
 package com.example.android.codelabs.paging.data
 
+import android.os.MessageQueue
 import android.util.Log
 import com.example.android.codelabs.paging.api.GithubService
 import com.example.android.codelabs.paging.api.IN_QUALIFIER
@@ -29,35 +30,20 @@ import java.io.IOException
 // GitHub page API is 1 based: https://developer.github.com/v3/#pagination
 private const val GITHUB_STARTING_PAGE_INDEX = 1
 
-/**
- * Repository class that works with local and remote data sources.
- */
 class GithubRepository(private val service: GithubService) {
     companion object {
         const val NETWORK_PAGE_SIZE = 30
     }
 
-    // keep the list of all results received
-    private val inMemoryCache = mutableListOf<Repo>()
-
-    // shared flow of results, which allows us to broadcast updates so
-    // the subscriber will have the latest data
+    private val repoResultDataList = mutableListOf<Repo>()
     private val searchResults = MutableSharedFlow<RepoSearchResult>(replay = 1)
-
-    // keep the last requested page. When the request is successful, increment the page number.
     private var lastRequestedPage = GITHUB_STARTING_PAGE_INDEX
-
-    // avoid triggering multiple requests in the same time
     private var isRequestInProgress = false
 
-    /**
-     * Search repositories whose names match the query, exposed as a stream of data that will emit
-     * every time we get more data from the network.
-     */
     suspend fun getSearchResultStream(query: String): Flow<RepoSearchResult> {
         Log.d("paging", "New query: $query")
         lastRequestedPage = 1
-        inMemoryCache.clear()
+        repoResultDataList.clear()
         requestAndSaveData(query)
 
         return searchResults
@@ -71,11 +57,6 @@ class GithubRepository(private val service: GithubService) {
         }
     }
 
-    suspend fun retry(query: String) {
-        if (isRequestInProgress) return
-        requestAndSaveData(query)
-    }
-
     private suspend fun requestAndSaveData(query: String): Boolean {
         isRequestInProgress = true
         var successful = false
@@ -84,9 +65,7 @@ class GithubRepository(private val service: GithubService) {
         try {
             val response = service.searchRepos(apiQuery, lastRequestedPage, NETWORK_PAGE_SIZE)
             Log.d("paging", "response $response")
-            val repos = response.items ?: emptyList()
-            inMemoryCache.addAll(repos)
-            val reposByName = reposByName(query)
+            val reposByName: List<Repo> = filterResultByName(response.items, query)
             searchResults.emit(RepoSearchResult.Success(reposByName))
             successful = true
         } catch (exception: IOException) {
@@ -98,10 +77,9 @@ class GithubRepository(private val service: GithubService) {
         return successful
     }
 
-    private fun reposByName(query: String): List<Repo> {
-        // from the in memory cache select only the repos whose name or description matches
-        // the query. Then order the results.
-        return inMemoryCache
+    private fun filterResultByName(repos: List<Repo>, query: String): List<Repo> {
+        repoResultDataList.addAll(repos)
+        return repoResultDataList
             .filter {
                 it.name.contains(query, true) ||
                         (it.description != null && it.description.contains(query, true))

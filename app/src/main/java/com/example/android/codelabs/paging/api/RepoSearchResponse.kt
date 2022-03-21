@@ -23,6 +23,7 @@ import com.google.gson.annotations.SerializedName
  * Data class to hold repo responses from searchRepo API calls.
  */
 data class RepoSearchResponse(
+    //SerializedName用于将Json字符串中的字段和Java对象中的某个属性进行匹配映射。
     @SerializedName("total_count") val total: Int = 0,
     @SerializedName("items") val items: List<Repo> = emptyList(),
     val nextPage: Int? = null

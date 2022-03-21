@@ -64,7 +64,6 @@ class RepoViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         this.repo = repo
         name.text = repo.fullName
 
-        // if the description is missing, hide the TextView
         var descriptionVisibility = View.GONE
         if (repo.description != null) {
             description.text = repo.description
@@ -75,7 +74,6 @@ class RepoViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         stars.text = repo.stars.toString()
         forks.text = repo.forks.toString()
 
-        // if the language is missing, hide the label and the value
         var languageVisibility = View.GONE
         if (!repo.language.isNullOrEmpty()) {
             val resources = this.itemView.context.resources

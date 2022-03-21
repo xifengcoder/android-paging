@@ -23,10 +23,8 @@ import android.view.inputmethod.EditorInfo
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.distinctUntilChanged
-import androidx.lifecycle.map
+import androidx.lifecycle.*
+import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -34,11 +32,13 @@ import androidx.recyclerview.widget.RecyclerView.OnScrollListener
 import com.example.android.codelabs.paging.Injection
 import com.example.android.codelabs.paging.databinding.ActivitySearchRepositoriesBinding
 import com.example.android.codelabs.paging.model.RepoSearchResult
+import java.util.*
 
-class SearchRepositoriesActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity() {
     companion object {
         const val TAG = "paging"
     }
+
     private lateinit var repoAdapter: ReposAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,13 +47,26 @@ class SearchRepositoriesActivity : AppCompatActivity() {
         val view = binding.root
         setContentView(view)
 
-        val viewModel = ViewModelProvider(this, Injection.provideViewModelFactory(owner = this))
+        val viewModel = ViewModelProvider(this, Injection.provideViewModelFactory(this))
             .get(SearchRepositoriesViewModel::class.java)
 
         val decoration = DividerItemDecoration(this, DividerItemDecoration.VERTICAL)
         binding.recyclerView.addItemDecoration(decoration)
         binding.initView(viewModel.onAction)
         binding.bindState(viewModel.uiStateLiveData)
+        LiveDataBus.getInstance().with("key_test", String::class.java)
+            .observeForever( object : Observer<String> {
+                override fun onChanged(it: String) {
+
+                }
+            });
+    }
+
+    /**
+     * 被废弃的方法。
+     */
+    override fun onRetainCustomNonConfigurationInstance(): Any? {
+        return super.onRetainCustomNonConfigurationInstance()
     }
 
     private fun ActivitySearchRepositoriesBinding.initView(onAction: (UiActionType) -> Unit) {
@@ -101,13 +114,13 @@ class SearchRepositoriesActivity : AppCompatActivity() {
         uiStateLiveData
             .map(UiStateData::query)
             .distinctUntilChanged()
-            .observe(this@SearchRepositoriesActivity, { queryString ->
+            .observe(this@MainActivity, { queryString ->
                 searchEdit.setText(queryString)
             })
         uiStateLiveData
             .map(UiStateData::searchResult)
             .distinctUntilChanged()
-            .observe(this@SearchRepositoriesActivity) { result ->
+            .observe(this@MainActivity) { result ->
                 Log.d(TAG, "observe result: $result")
                 when (result) {
                     is RepoSearchResult.Success -> {
@@ -116,7 +129,7 @@ class SearchRepositoriesActivity : AppCompatActivity() {
                     }
                     is RepoSearchResult.Error -> {
                         Toast.makeText(
-                            this@SearchRepositoriesActivity,
+                            this@MainActivity,
                             "\uD83D\uDE28 Wooops $result.message}",
                             Toast.LENGTH_LONG
                         ).show()

@@ -25,6 +25,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlin.coroutines.EmptyCoroutineContext
 
+private const val VISIBLE_THRESHOLD = 5
+private const val LAST_SEARCH_QUERY: String = "last_search_query"
+private const val DEFAULT_QUERY = "Android"
+
 class SearchRepositoriesViewModel(
     private val repository: GithubRepository,
     private val savedStateHandle: SavedStateHandle
@@ -51,18 +55,15 @@ class SearchRepositoriesViewModel(
             }
 
         onAction = { action ->
+            Log.d(MainActivity.TAG, "onAction action: $action")
             when (action) {
                 is UiActionType.Search -> {
-                    Log.d(
-                        SearchRepositoriesActivity.TAG,
-                        "ViewModel SearchAction query: " + action.queryString
-                    );
                     queryLiveData.postValue(action.queryString)
                 }
                 is UiActionType.Scroll -> {
                     Log.d(
-                        SearchRepositoriesActivity.TAG,
-                        "ViewModel ScrollAction shouldFetchMore: " + action.shouldFetchMore
+                        MainActivity.TAG,
+                        "onAction Scroll shouldFetchMore: ${action.shouldFetchMore}"
                     )
                     if (action.shouldFetchMore) {
                         val immutableQuery = queryLiveData.value
@@ -87,19 +88,25 @@ private val UiActionType.Scroll.shouldFetchMore
     get() = visibleItemCount + lastVisibleItemPosition + VISIBLE_THRESHOLD >= totalItemCount
 
 sealed class UiActionType {
-    data class Search(val queryString: String) : UiActionType()
+    data class Search(val queryString: String) : UiActionType() {
+        override fun toString(): String {
+            return "Search{queryString: $queryString}"
+        }
+    }
+
     data class Scroll(
-        val visibleItemCount: Int,
-        val lastVisibleItemPosition: Int,
+        val visibleItemCount: Int, val lastVisibleItemPosition: Int,
         val totalItemCount: Int
-    ) : UiActionType()
+    ) : UiActionType() {
+        override fun toString(): String {
+            return "Scroll{visibleItemCount: " + visibleItemCount +
+                    ", lastVisibleItemPosition: " + lastVisibleItemPosition +
+                    " totalItemCount: " + totalItemCount + "}"
+        }
+    }
 }
 
 data class UiStateData(
     val query: String,
     val searchResult: RepoSearchResult
 )
-
-private const val VISIBLE_THRESHOLD = 5
-private const val LAST_SEARCH_QUERY: String = "last_search_query"
-private const val DEFAULT_QUERY = "Android"

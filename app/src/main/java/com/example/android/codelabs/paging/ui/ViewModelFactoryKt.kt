@@ -25,7 +25,7 @@ import com.example.android.codelabs.paging.data.GithubRepository
 /**
  * Factory for ViewModels
  */
-class ViewModelFactory(
+class ViewModelFactoryKt(
     owner: SavedStateRegistryOwner,
     private val repository: GithubRepository
 ) : AbstractSavedStateViewModelFactory(owner, null) {
